@@ -7,6 +7,7 @@ dist/
 
 # Virtual environments
 .venv/
+.venv-pre-mlflow/
 
 # Testing
 .pytest_cache/
@@ -32,7 +33,7 @@ Thumbs.db
 # Runtime output
 logs/
 mlruns/
-mlflow.db
+mlflow.db*
 
 # Data
 data/raw/*
@@ -43,3 +44,8 @@ data/processed/*
 # Trained models
 models/*
 !models/.gitkeep
+
+# Notebook-generated model exports
+artifacts/
+*.pkl
+*.joblib

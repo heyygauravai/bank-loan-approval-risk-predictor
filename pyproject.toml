@@ -1,27 +1,43 @@
 [project]
 name = "loan-approval-prediction"
 version = "0.1.0"
-description = "Add your description here"
+description = "A reproducible machine-learning project for exploring loan approval prediction."
 readme = "README.md"
 authors = [
     { name = "Gaurav Chaudhary", email = "heyygaurav07@gmail.com" }
 ]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "fastapi>=0.141.1",
+    "imbalanced-learn==0.13.0",
+    "ipykernel>=7.3.0",
+    "ipython>=9.17.1",
+    "joblib>=1.6.0",
+    "jupyterlab>=4.6.4",
+    "kagglehub>=0.3,<2",
+    "matplotlib>=3.11.2",
+    "mlflow>=3.16.1",
+    "numpy>=2.5.3",
     "pandas>=3.0.6",
-    "pyyaml>=6.0.3",
+    "scikit-learn==1.6.1",
+    "seaborn>=0.13.2",
+    "streamlit>=1.64.0",
+    "uvicorn>=0.53.0",
+    "xgboost==2.1.4",
 ]
-
-[project.scripts]
-loan-approval-prediction = "loan_approval_prediction:main"
 
 [build-system]
 requires = ["uv_build>=0.12.1,<0.13.0"]
 build-backend = "uv_build"
 
+[project.scripts]
+loan-approval = "loan_approval_prediction.cli:main"
+
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.1.1",
+    "ruff>=0.16.8",
 ]
 
 [tool.pytest.ini_options]

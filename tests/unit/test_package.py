@@ -1,4 +1,7 @@
-def test_package_can_be_imported() -> None:
-    import loan_approval_prediction
+from importlib import import_module
 
-    assert loan_approval_prediction is not None
+
+def test_package_can_be_imported() -> None:
+    package = import_module("loan_approval_prediction")
+
+    assert package.__name__ == "loan_approval_prediction"

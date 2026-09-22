@@ -1,6 +1,7 @@
 .git
 .github
 .venv
+.venv-pre-mlflow
 .vscode
 .idea
 __pycache__
@@ -9,7 +10,7 @@ __pycache__
 .ipynb_checkpoints
 logs
 mlruns
-mlflow.db
+mlflow.db*
 notebooks
 tests
 data
