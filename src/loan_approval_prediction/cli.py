@@ -34,7 +34,7 @@ def main() -> None:
         else:
             features = json.loads(args.input.read_text(encoding="utf-8"))
             print(json.dumps(predict_one(load_bundle(args.model), features), indent=2))
-    except (FileNotFoundError, ValueError, OSError, json.JSONDecodeError) as exc:
+    except (FileNotFoundError, TypeError, ValueError, OSError, json.JSONDecodeError) as exc:
         parser.exit(2, f"Error: {exc}\n")
 
 

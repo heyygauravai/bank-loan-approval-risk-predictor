@@ -15,6 +15,8 @@ A tabular-classification model for the historical loan approval label. It estima
 
 ## Held-out result
 
+The packaged model's machine-readable result is in [reports/evaluation.json](reports/evaluation.json). Run-specific timestamps and MLflow IDs remain in the regenerated local report.
+
 | Metric | Value |
 | --- | ---: |
 | Balanced accuracy | 0.770 |

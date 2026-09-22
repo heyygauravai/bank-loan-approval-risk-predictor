@@ -1,5 +1,7 @@
 # Loan Approval Prediction
 
+[![CI](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml)
+
 A compact, end-to-end MLOps learning project built from the [Kaggle Loan Prediction Problem training dataset](https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset/data). It validates data, trains and evaluates a model, tracks experiments, serves predictions through an API, and includes a small Streamlit demo. The original exploratory notebook remains in `notebooks/`.
 
 The target is **historical loan approval** (`Loan_Status`: `Y` or `N`), **not loan default or repayment**. This is a portfolio demonstration, not a real lending or financial-advice system.
@@ -20,6 +22,8 @@ The `--link-mode copy` option avoids the OneDrive hardlink error seen on this Wi
 
 ## Workflow
 
+The notebook is an independent exploration: it uses additional features and selects XGBoost. It is **not** the API's training or artifact-export path. The packaged pipeline below is authoritative for the served model.
+
 1. `loan-approval train` validates the 614-row CSV, then makes a stratified 80/20 train/test split (seed 42).
 2. Missing-value imputation, encoding, and scaling live inside each scikit-learn pipeline, so cross-validation fits them only on training folds. The candidates are logistic regression, random forest, and XGBoost. Five-fold balanced accuracy selects a candidate.
 3. Sigmoid calibration and an approval threshold are fitted/selected using only the training portion. The held-out test set is evaluated once. The training command saves `models/loan_approval.joblib` and `models/loan_approval.report.json`, plus an MLflow run in the local ignored `mlflow.db`/`mlruns` storage.
@@ -28,6 +32,8 @@ The `--link-mode copy` option avoids the OneDrive hardlink error seen on this Wi
 `Loan_ID`, `Gender`, and `Married` are not model inputs. The report retains subgroup error summaries for `Gender`, `Married`, and `Property_Area` to make limitations visible; this is **not** a fairness certification. Removing two attributes does not prevent proxy effects through other features.
 
 ## Results and limitations
+
+The tracked [machine-readable evaluation report](reports/evaluation.json) records the packaged model's dataset checksum, split, selection scores, threshold, and test metrics. The full run report is regenerated locally by `loan-approval train`.
 
 The reproducible local run on the documented CSV selected random forest. On 123 held-out rows it reached **0.770 balanced accuracy**, **0.854 accuracy**, and **0.780 ROC AUC**. Its confusion matrix was TN 21, FP 17, FN 1, TP 84, where `Y` is the positive class. Rejected-case recall was only **0.553** (21 of 38). See [MODEL_CARD.md](MODEL_CARD.md) for the full methodology and cautions.
 
@@ -72,6 +78,7 @@ CI runs tests on synthetic data (no Kaggle file or trained artifact required) an
 | --- | --- |
 | `data/README.md` | Dataset source, checksum, schema, missingness |
 | `notebooks/` | Original exploratory notebook |
+| `reports/evaluation.json` | Tracked packaged-model evaluation |
 | `src/loan_approval_prediction/` | Data validation, modeling, training, inference, CLI, API |
 | `streamlit_app/` | Demo UI, calling the API |
 | `tests/` | Synthetic-data unit and integration checks |
