@@ -32,3 +32,6 @@ jobs:
 
       - name: Lint
         run: uv run ruff check src tests streamlit_app
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pandas.errors import ParserError
+from pandas.errors import EmptyDataError, ParserError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +64,11 @@ def validate_dataset(frame: pd.DataFrame) -> pd.DataFrame:
         raise DataValidationError(f"Missing required columns: {missing_columns}")
 
     data = frame.copy()
-    if data[ID_COLUMN].isna().any() or data[ID_COLUMN].duplicated().any():
+    if (
+        data[ID_COLUMN].isna().any()
+        or data[ID_COLUMN].astype(str).str.strip().eq("").any()
+        or data[ID_COLUMN].duplicated().any()
+    ):
         raise DataValidationError("Loan_ID must be present and unique for every row.")
 
     targets = set(data[TARGET_COLUMN].dropna().unique())
@@ -106,7 +110,7 @@ def load_dataset(path: str | Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Dataset not found: {source}")
     try:
         frame = pd.read_csv(source)
-    except (OSError, ParserError) as exc:
+    except (OSError, UnicodeError, EmptyDataError, ParserError) as exc:
         raise DataValidationError(f"Could not read dataset: {source}") from exc
     LOGGER.info("Loaded dataset %s (%d rows)", source.name, len(frame))
     return validate_dataset(frame)

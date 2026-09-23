@@ -45,7 +45,7 @@ data/processed/*
 models/*
 !models/.gitkeep
 
-# Notebook-generated model exports
+# Other generated artifacts
 artifacts/
 *.pkl
 *.joblib

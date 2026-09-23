@@ -1,4 +1,4 @@
-"""Streamlit interface for the loan approval prediction API."""
+"""Streamlit demo for API-backed and standalone model inference."""
 
 from __future__ import annotations
 
@@ -9,7 +9,31 @@ from urllib.request import Request, urlopen
 
 import streamlit as st
 
-API_URL = os.getenv("LOAN_API_URL", "http://localhost:8000/predict")
+from loan_approval_prediction.inference import load_bundle, predict_one
+from loan_approval_prediction.model_delivery import fetch_pinned_model
+
+API_URL = os.getenv("LOAN_API_URL", "").strip()
+
+
+@st.cache_resource(show_spinner="Loading the prediction model...")
+def get_standalone_bundle() -> dict:
+    """Load the same evaluated bundle used by the API, once per app process."""
+    return load_bundle(fetch_pinned_model())
+
+
+def get_prediction(payload: dict) -> dict:
+    """Use the configured API in Compose, or local inference on Community Cloud."""
+    if not API_URL:
+        return predict_one(get_standalone_bundle(), payload)
+    request = Request(
+        API_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(request, timeout=10) as response:
+        return json.load(response)
+
 
 st.set_page_config(page_title="Loan approval predictor", page_icon="📋")
 st.title("Loan approval predictor")
@@ -39,19 +63,15 @@ if submitted:
         "Credit_History": credit_history,
         "Property_Area": property_area,
     }
-    request = Request(
-        API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
     try:
-        with urlopen(request, timeout=10) as response:
-            result = json.load(response)
+        result = get_prediction(payload)
     except HTTPError as exc:
-        st.error(f"API rejected the input (HTTP {exc.code}). Check the API logs for details.")
-    except (URLError, TimeoutError, ValueError) as exc:
-        st.error(f"Could not get a prediction from the API: {exc}")
+        if API_URL:
+            st.error(f"API rejected the input (HTTP {exc.code}). Check the API logs for details.")
+        else:
+            st.error(f"Could not download the model release (HTTP {exc.code}).")
+    except (URLError, TimeoutError, OSError, ValueError) as exc:
+        st.error(f"Could not get a prediction: {exc}")
     else:
         label = "historically approved" if result["prediction"] == "Y" else "historically rejected"
         st.metric("Model prediction", label)

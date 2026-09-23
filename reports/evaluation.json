@@ -1,0 +1,45 @@
+{
+  "source": "data/raw/train_u6lujuX_CVtuZ9i.csv",
+  "dataset_sha256": "8c2cc67a13279ec746b15f76f14e8503154274ef7f221d2437033b4407c80ca8",
+  "dataset_rows": 614,
+  "train_rows": 491,
+  "test_rows": 123,
+  "random_state": 42,
+  "test_size": 0.2,
+  "cv_folds": 5,
+  "selection_metric": "balanced_accuracy",
+  "cv_results": {
+    "logistic_regression": {"mean": 0.6825029501449111, "std": 0.04989351337273233},
+    "random_forest": {"mean": 0.6968670405090298, "std": 0.06974540031624614},
+    "xgboost": {"mean": 0.6744034098954941, "std": 0.06305177307489324}
+  },
+  "selected_model": "random_forest",
+  "threshold": 0.42,
+  "threshold_oof_balanced_accuracy": 0.6891498709006127,
+  "test_metrics": {
+    "accuracy": 0.8536585365853658,
+    "balanced_accuracy": 0.7704334365325078,
+    "precision_approved": 0.8316831683168316,
+    "recall_approved": 0.9882352941176471,
+    "f1_approved": 0.9032258064516129,
+    "precision_rejected": 0.9545454545454546,
+    "recall_rejected": 0.5526315789473685,
+    "f1_rejected": 0.7,
+    "roc_auc": 0.780185758513932,
+    "average_precision": 0.8604638474918951,
+    "brier_score": 0.13649025857204322,
+    "confusion_matrix": {"tn": 21, "fp": 17, "fn": 1, "tp": 84}
+  },
+  "feature_columns": [
+    "ApplicantIncome",
+    "CoapplicantIncome",
+    "LoanAmount",
+    "Loan_Amount_Term",
+    "Dependents",
+    "Education",
+    "Self_Employed",
+    "Credit_History",
+    "Property_Area"
+  ],
+  "excluded_columns": ["Loan_ID", "Gender", "Married"]
+}

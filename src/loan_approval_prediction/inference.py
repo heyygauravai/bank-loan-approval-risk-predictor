@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from math import isfinite
+from numbers import Real
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,16 @@ def load_bundle(path: str | Path = DEFAULT_MODEL_PATH) -> dict[str, Any]:
         raise ValueError(f"Invalid model bundle: {source}")
     if bundle["feature_columns"] != list(FEATURE_COLUMNS):
         raise ValueError("Model feature schema does not match this application version.")
+    threshold = bundle["threshold"]
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, Real)
+        or not isfinite(float(threshold))
+        or not 0 < threshold < 1
+    ):
+        raise ValueError("Model bundle has an invalid decision threshold.")
+    if not callable(getattr(bundle["model"], "predict_proba", None)):
+        raise TypeError("Model bundle does not contain a probability classifier.")
     return bundle
 
 
