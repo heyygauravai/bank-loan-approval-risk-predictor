@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml)
 
-A compact, end-to-end MLOps learning project built from the [Kaggle Loan Prediction Problem training dataset](https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset/data). It validates data, trains and evaluates a model, tracks experiments, serves predictions through an API, and includes a small Streamlit demo. The original exploratory notebook remains in `notebooks/`.
+A compact, end-to-end MLOps learning project built from the [Kaggle Loan Prediction Problem training dataset](https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset/data). It validates data, trains and evaluates a model, tracks experiments, serves predictions through an API, and includes a small [Streamlit demo](https://bank-loan-approval-risk-predictor.streamlit.app/). The original exploratory notebook remains in `notebooks/`.
 
 The target is **historical loan approval** (`Loan_Status`: `Y` or `N`), **not loan default or repayment**. This is a portfolio demonstration, not a real lending or financial-advice system.
 
@@ -41,11 +41,14 @@ These numbers are from one small split, with no external or temporal validation.
 
 ## Use the API and demo
 
-Start the API after training, then in another terminal run:
+Start the API after training, then in another PowerShell terminal run:
 
 ```powershell
+$env:LOAN_API_URL = "http://localhost:8000/predict"
 uv run --link-mode copy streamlit run streamlit_app/app.py
 ```
+
+The local and Docker Compose demos call FastAPI. The hosted [Streamlit Community Cloud demo](https://bank-loan-approval-risk-predictor.streamlit.app/) has no separately deployed API: it loads the **same evaluated bundle** and calls the same `predict_one` function in-process. This keeps the public demo usable without another hosting service; the API contract remains demonstrated and tested locally. When `LOAN_API_URL` is unset, Streamlit downloads the pinned `v0.1.0` [model release asset](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/releases/tag/v0.1.0), verifies its SHA-256 before loading it, and caches it locally. The model binary is not committed to Git; the raw Kaggle CSV remains excluded.
 
 Open the Streamlit URL shown in the terminal. API documentation is at `http://localhost:8000/docs`. Example request:
 
@@ -56,7 +59,7 @@ Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -ContentType a
 
 `LoanAmount` is in the dataset's unconfirmed units. The model predicts the probability of a recorded `Y` label, not a real-world chance of receiving approval. The local CLI also accepts a JSON object with the same nine keys: `uv run --link-mode copy loan-approval predict --input application.json`.
 
-To inspect training runs, execute `uv run --link-mode copy mlflow ui --backend-store-uri sqlite:///mlflow.db` from the project root. Generated models, data, logs, and tracking files are ignored by Git. Only load model bundles that you trained or otherwise trust: joblib files can execute code when deserialized.
+To inspect training runs, execute `uv run --link-mode copy mlflow ui --backend-store-uri sqlite:///mlflow.db` from the project root. Generated models, data, logs, and tracking files are ignored by Git. The hosted demo accepts only the pinned release checksum, because joblib files can execute code when deserialized.
 
 ## Container demo
 
@@ -80,10 +83,10 @@ CI runs tests on synthetic data (no Kaggle file or trained artifact required) an
 | `notebooks/` | Original exploratory notebook |
 | `reports/evaluation.json` | Tracked packaged-model evaluation |
 | `src/loan_approval_prediction/` | Data validation, modeling, training, inference, CLI, API |
-| `streamlit_app/` | Demo UI, calling the API |
+| `streamlit_app/` | Demo UI; calls the API when configured, otherwise runs the same inference locally |
 | `tests/` | Synthetic-data unit and integration checks |
 | `MODEL_CARD.md` | Evaluation and responsible-use notes |
 | `Dockerfile`, `compose.yaml` | Local container demo |
 | `.github/workflows/ci.yml` | Tests and lint in CI |
 
-This project deliberately leaves out orchestration, cloud deployment, and monitoring infrastructure. The focus is a clear, reproducible learning workflow rather than a claim of production readiness.
+This project deliberately leaves out orchestration, a separately hosted API, and monitoring infrastructure. The focus is a clear, reproducible workflow rather than a claim of production readiness.

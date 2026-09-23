@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import joblib
 import pytest
 from fastapi.testclient import TestClient
+from streamlit.testing.v1 import AppTest
 
+from loan_approval_prediction import model_delivery
 from loan_approval_prediction.api import create_app
 from loan_approval_prediction.data import FEATURE_COLUMNS
 from loan_approval_prediction.inference import load_bundle, predict_one
@@ -92,3 +95,18 @@ def test_bundle_without_classifier_is_rejected(tmp_path):
     )
     with pytest.raises(TypeError, match="probability classifier"):
         load_bundle(path)
+
+
+def test_standalone_streamlit_predicts_without_an_api(synthetic_data, tmp_path, monkeypatch):
+    model_path = tmp_path / "cloud-demo.joblib"
+    train(synthetic_data, model_path, cv_folds=2, track_mlflow=False)
+    monkeypatch.delenv("LOAN_API_URL", raising=False)
+    monkeypatch.setattr(model_delivery, "fetch_pinned_model", lambda: model_path)
+
+    app_path = Path(__file__).resolve().parents[2] / "streamlit_app" / "app.py"
+    app = AppTest.from_file(str(app_path), default_timeout=30).run()
+    assert not app.exception
+    app.button[0].click().run()
+    assert not app.exception
+    assert not app.error
+    assert app.metric[0].label == "Model prediction"
