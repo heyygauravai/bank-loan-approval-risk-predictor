@@ -1,92 +1,119 @@
-# Loan Approval Prediction
+# Bank Loan Approval Predictor
 
 [![CI](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml)
 
-A compact, end-to-end MLOps learning project built from the [Kaggle Loan Prediction Problem training dataset](https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset/data). It validates data, trains and evaluates a model, tracks experiments, serves predictions through an API, and includes a small [Streamlit demo](https://bank-loan-approval-risk-predictor.streamlit.app/). The original exploratory notebook remains in `notebooks/`.
+**[Try the live Streamlit app](https://bank-loan-approval-risk-predictor.streamlit.app/)** · [Model card](MODEL_CARD.md) · [Evaluation report](reports/evaluation.json) · [Dataset source](https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset/data)
 
-The target is **historical loan approval** (`Loan_Status`: `Y` or `N`), **not loan default or repayment**. This is a portfolio demonstration, not a real lending or financial-advice system.
+An end-to-end machine-learning project that predicts the **historical loan approval label** (`Y` or `N`) in the Kaggle Loan Prediction Problem dataset. It covers data checks, reproducible training, evaluation, experiment tracking, an API, a web demo, containers, and automated tests.
 
-## Quick start
+This is a portfolio learning project, **not a loan-default or repayment-risk model** and not a system for making real lending decisions.
 
-Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.12. From the repository root:
+## What I built
 
-```powershell
-uv sync --locked --link-mode copy
-uv run --link-mode copy loan-approval train
-uv run --link-mode copy uvicorn loan_approval_prediction.api:app --reload
-```
+- A validated data-loading pipeline that checks the CSV schema, IDs, categories, numeric ranges, and unreadable files, while recording missingness before training.
+- Leakage-safe preprocessing inside scikit-learn pipelines: median imputation and scaling for numeric features; most-frequent imputation and one-hot encoding for categorical features.
+- A reproducible comparison of logistic regression, random forest, and XGBoost using five-fold stratified cross-validation on the training split. The packaged workflow selected **random forest**.
+- Sigmoid probability calibration and a decision threshold chosen from out-of-fold training predictions, followed by one evaluation on the held-out test split.
+- A versioned model bundle, a machine-readable [evaluation report](reports/evaluation.json), and local MLflow experiment tracking.
+- Three ways to make predictions: a command-line interface, a FastAPI service, and a Streamlit interface. The local Docker setup connects Streamlit to FastAPI.
+- Logging and actionable error handling for bad datasets, invalid inputs, missing or corrupted model bundles, and prediction failures.
+- Tests for data validation, training and inference, malformed bundles, API requests, and the standalone Streamlit prediction flow; GitHub Actions runs the tests, Ruff, and a Docker Compose configuration check.
 
-Get the training CSV from the Kaggle page and put it at `data/raw/train_u6lujuX_CVtuZ9i.csv` before training. Verify its SHA-256 against [data/README.md](data/README.md). The CSV is intentionally Git-ignored because the source's license is marked `Unknown`. Do not commit or redistribute it without permission.
+## Results
 
-The `--link-mode copy` option avoids the OneDrive hardlink error seen on this Windows workspace. On a normal filesystem, plain `uv sync --locked` and `uv run` also work. The notebook's dependencies live in the main dependency set, so `uv run --link-mode copy jupyter lab` opens `notebooks/Loan_default_prediction.ipynb` in the same environment.
+The authoritative results come from the packaged workflow, not the exploratory notebook. The documented 614-row dataset was split into 491 training rows and 123 held-out test rows (stratified, seed 42). The selected random forest used a **0.42** approval threshold.
 
-## Workflow
+| Held-out metric | Result |
+| --- | ---: |
+| Balanced accuracy | 0.770 |
+| Accuracy | 0.854 |
+| ROC AUC | 0.780 |
+| Approved (`Y`) recall | 0.988 |
+| Rejected (`N`) recall | 0.553 |
 
-The notebook is an independent exploration: it uses additional features and selects XGBoost. It is **not** the API's training or artifact-export path. The packaged pipeline below is authoritative for the served model.
+The confusion matrix was TN 21, FP 17, FN 1, TP 84 (`Y` is the positive class). Rejected-case recall is a notable weakness despite the overall accuracy. See the [full report](reports/evaluation.json) and [model card](MODEL_CARD.md) for methodology, additional metrics, and limitations.
 
-1. `loan-approval train` validates the 614-row CSV, then makes a stratified 80/20 train/test split (seed 42).
-2. Missing-value imputation, encoding, and scaling live inside each scikit-learn pipeline, so cross-validation fits them only on training folds. The candidates are logistic regression, random forest, and XGBoost. Five-fold balanced accuracy selects a candidate.
-3. Sigmoid calibration and an approval threshold are fitted/selected using only the training portion. The held-out test set is evaluated once. The training command saves `models/loan_approval.joblib` and `models/loan_approval.report.json`, plus an MLflow run in the local ignored `mlflow.db`/`mlruns` storage.
-4. The API loads the saved bundle at startup. `GET /health` checks readiness; `POST /predict` validates one application and returns the predicted historical label, estimated probability, threshold, and model name.
+## How the pieces fit
 
-`Loan_ID`, `Gender`, and `Married` are not model inputs. The report retains subgroup error summaries for `Gender`, `Married`, and `Property_Area` to make limitations visible; this is **not** a fairness certification. Removing two attributes does not prevent proxy effects through other features.
+The packaged path is: **Kaggle CSV → validation → preprocessing and model selection → calibration and threshold → held-out evaluation → model bundle and report → inference**.
 
-## Results and limitations
+The original [notebook](notebooks/Loan_default_prediction.ipynb) is preserved as a separately labeled exploration. It used extra features and selected XGBoost; it does **not** produce the model served by this project. The packaged training code and tracked evaluation report are the source of truth for the API and demo.
 
-The tracked [machine-readable evaluation report](reports/evaluation.json) records the packaged model's dataset checksum, split, selection scores, threshold, and test metrics. The full run report is regenerated locally by `loan-approval train`.
+`Loan_ID`, `Gender`, and `Married` are excluded from model inputs. The training report includes subgroup error summaries for `Gender`, `Married`, and `Property_Area`, but these are not a fairness certification. Other features can still act as proxies.
 
-The reproducible local run on the documented CSV selected random forest. On 123 held-out rows it reached **0.770 balanced accuracy**, **0.854 accuracy**, and **0.780 ROC AUC**. Its confusion matrix was TN 21, FP 17, FN 1, TP 84, where `Y` is the positive class. Rejected-case recall was only **0.553** (21 of 38). See [MODEL_CARD.md](MODEL_CARD.md) for the full methodology and cautions.
+### Local API and cloud demo
 
-These numbers are from one small split, with no external or temporal validation. The source labels may encode past policy or bias; no result here establishes creditworthiness, repayment risk, or suitability for actual applicants. Do not use the model to approve, reject, or rank real people.
+- **Locally and with Docker Compose:** Streamlit sends a request to FastAPI. FastAPI validates the input and calls the shared inference function with the trained model bundle.
+- **On [Streamlit Community Cloud](https://bank-loan-approval-risk-predictor.streamlit.app/):** there is no separately hosted API. Streamlit calls that same inference function in-process. It downloads the pinned [v0.1.0 model release](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/releases/tag/v0.1.0), verifies its SHA-256 before loading it, and caches it. This keeps the public demo usable without pretending that a local API is available on the internet.
 
-## Use the API and demo
+The raw Kaggle CSV, generated local models, and MLflow files are Git-ignored. The model binary is published as a release asset rather than committed to Git; the evaluation report is committed.
 
-Start the API after training, then in another PowerShell terminal run:
+## Run it locally
 
-```powershell
-$env:LOAN_API_URL = "http://localhost:8000/predict"
-uv run --link-mode copy streamlit run streamlit_app/app.py
-```
+Requirements: **Python 3.12**, [uv](https://docs.astral.sh/uv/getting-started/installation/), and the training CSV from the [Kaggle dataset page](https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset/data).
 
-The local and Docker Compose demos call FastAPI. The hosted [Streamlit Community Cloud demo](https://bank-loan-approval-risk-predictor.streamlit.app/) has no separately deployed API: it loads the **same evaluated bundle** and calls the same `predict_one` function in-process. This keeps the public demo usable without another hosting service; the API contract remains demonstrated and tested locally. When `LOAN_API_URL` is unset, Streamlit downloads the pinned `v0.1.0` [model release asset](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/releases/tag/v0.1.0), verifies its SHA-256 before loading it, and caches it locally. The model binary is not committed to Git; the raw Kaggle CSV remains excluded.
+1. Clone the repository and place `train_u6lujuX_CVtuZ9i.csv` at `data/raw/train_u6lujuX_CVtuZ9i.csv`. Check its SHA-256 against [data/README.md](data/README.md); the raw file is not included in Git.
+2. From the repository root, install the locked dependencies and train:
 
-Open the Streamlit URL shown in the terminal. API documentation is at `http://localhost:8000/docs`. Example request:
+   ```powershell
+   uv sync --locked
+   uv run loan-approval train
+   ```
+
+3. Start FastAPI:
+
+   ```powershell
+   uv run uvicorn loan_approval_prediction.api:app --reload
+   ```
+
+4. In another PowerShell terminal, connect Streamlit to the local API:
+
+   ```powershell
+   $env:LOAN_API_URL = "http://localhost:8000/predict"
+   uv run streamlit run streamlit_app/app.py
+   ```
+
+Open the Streamlit URL shown in the terminal. The local API has interactive documentation at [http://localhost:8000/docs](http://localhost:8000/docs) and a `GET /health` endpoint. For a direct API request:
 
 ```powershell
 $body = @{ ApplicantIncome = 5000; CoapplicantIncome = 1200; LoanAmount = 140; Loan_Amount_Term = 360; Dependents = '0'; Education = 'Graduate'; Self_Employed = 'No'; Credit_History = 1; Property_Area = 'Urban' } | ConvertTo-Json
 Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -ContentType application/json -Body $body
 ```
 
-`LoanAmount` is in the dataset's unconfirmed units. The model predicts the probability of a recorded `Y` label, not a real-world chance of receiving approval. The local CLI also accepts a JSON object with the same nine keys: `uv run --link-mode copy loan-approval predict --input application.json`.
+The CLI also supports `uv run loan-approval predict --input application.json` with those same nine feature keys. To inspect experiment runs, use `uv run mlflow ui --backend-store-uri sqlite:///mlflow.db`. To open the notebook in the same environment, use `uv run jupyter lab`.
 
-To inspect training runs, execute `uv run --link-mode copy mlflow ui --backend-store-uri sqlite:///mlflow.db` from the project root. Generated models, data, logs, and tracking files are ignored by Git. The hosted demo accepts only the pinned release checksum, because joblib files can execute code when deserialized.
+If uv reports a hardlink error in a Windows OneDrive folder, set `$env:UV_LINK_MODE = "copy"` in each terminal before running the commands above.
 
-## Container demo
+### Docker Compose
 
-Train locally first, then run `docker compose up --build`. Compose starts the API at `http://localhost:8000` and Streamlit at `http://localhost:8501`; the generated local `models/` directory is mounted read-only into the API container. Containers are for a local demo, not a production deployment. The raw dataset and training environment are not included in the image.
+After training locally, run `docker compose up --build`. The API is available at [http://localhost:8000](http://localhost:8000) and Streamlit at [http://localhost:8501](http://localhost:8501). Compose mounts the generated `models/` directory read-only into the API container and configures the UI to call that API. The raw dataset is not baked into the image.
 
-## Checks
+## Check the project
 
 ```powershell
-uv run --link-mode copy pytest
-uv run --link-mode copy ruff check src tests streamlit_app
+uv run pytest
+uv run ruff check src tests streamlit_app
 uv lock --check --offline
+docker compose config --quiet
 ```
 
-CI runs tests on synthetic data (no Kaggle file or trained artifact required) and lint on pushes and pull requests to `main`. The tests cover schema validation, training and saved-bundle inference, API health, prediction, and invalid requests.
+[GitHub Actions CI](https://github.com/heyygauravai/bank-loan-approval-risk-predictor/actions/workflows/ci.yml) runs the tests, lint, and Compose configuration check on pushes and pull requests to `main`. Its tests use synthetic data, so CI does not need the Kaggle CSV or the released model binary. Data and model-loading failures raise explicit errors, and the training/API paths log diagnostic information.
 
-## Project map
+## Repository guide
 
 | Path | Purpose |
 | --- | --- |
-| `data/README.md` | Dataset source, checksum, schema, missingness |
-| `notebooks/` | Original exploratory notebook |
-| `reports/evaluation.json` | Tracked packaged-model evaluation |
-| `src/loan_approval_prediction/` | Data validation, modeling, training, inference, CLI, API |
-| `streamlit_app/` | Demo UI; calls the API when configured, otherwise runs the same inference locally |
-| `tests/` | Synthetic-data unit and integration checks |
-| `MODEL_CARD.md` | Evaluation and responsible-use notes |
-| `Dockerfile`, `compose.yaml` | Local container demo |
-| `.github/workflows/ci.yml` | Tests and lint in CI |
+| [data/README.md](data/README.md) | Dataset provenance, checksum, schema, and missingness |
+| [notebooks/](notebooks/) | Original exploratory notebook |
+| [src/loan_approval_prediction/](src/loan_approval_prediction/) | Validation, modeling, training, inference, CLI, and API |
+| [streamlit_app/](streamlit_app/) | Web interface for local API or standalone cloud inference |
+| [reports/evaluation.json](reports/evaluation.json) | Tracked packaged-model evaluation |
+| [tests/](tests/) | Synthetic-data unit and integration tests |
+| [MODEL_CARD.md](MODEL_CARD.md) | Detailed evaluation and responsible-use notes |
+| [Dockerfile](Dockerfile) and [compose.yaml](compose.yaml) | Local container demo |
 
-This project deliberately leaves out orchestration, a separately hosted API, and monitoring infrastructure. The focus is a clear, reproducible workflow rather than a claim of production readiness.
+## Scope and limitations
+
+This dataset is small and reflects historical approval decisions, which may contain bias. The test result comes from one split, with no external or temporal validation; its probabilities have not been independently validated for deployment. The source labels do not establish creditworthiness or repayment risk. `LoanAmount` is shown in the dataset's unconfirmed units. **Do not use this model to approve, reject, or rank real applicants.**
+
+The Kaggle source marks its license as `Unknown`, so the raw CSV is documented but not redistributed. This project demonstrates an engineering workflow; it does not claim production readiness or include a separately deployed API, monitoring, or real-world lending controls.
